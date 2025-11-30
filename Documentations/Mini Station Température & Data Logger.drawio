@@ -1,0 +1,34 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0" version="29.0.3">
+  <diagram name="Page-1" id="gNyI50AV-Q_h7Yrqmp8Y">
+    <mxGraphModel dx="244" dy="383" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-10" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;text-decoration:underline;&quot;&gt;&lt;b&gt;sensor&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:8px;&quot;&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Rôle : Fournir la température courante en °C à partir du capteur I2C&lt;br&gt;&lt;/li&gt;&lt;li&gt;IN : Requête de mesure (scheduler ou CLI), Adresse I2C du capteur&lt;/li&gt;&lt;li&gt;OUT : Température en &lt;code data-start=&quot;1938&quot; data-end=&quot;1945&quot;&gt;float&lt;/code&gt; (°C), code de retour (OK/erreur)&lt;/li&gt;&lt;li&gt;ACTION : Lecture registre capteur, conversion brute en °C&lt;/li&gt;&lt;li&gt;API : SensorTemp_init(), SensorTemp_Read(float *temp_c), SensorTemp_SetAddr(uint8_t addr)&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="160" y="225" width="240" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;" edge="1" parent="1" source="9fADJIqU08Vi0cWy6jxG-11" target="9fADJIqU08Vi0cWy6jxG-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-11" value="&lt;p style=&quot;margin:0px;margin-top:4px;text-align:center;text-decoration:underline;&quot;&gt;&lt;b&gt;logger&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:8px;&quot;&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Rôle : tocker et fournir l’historique des mesures de température (RAM)&lt;br&gt;&lt;/li&gt;&lt;li&gt;IN : Nouvelle mesure {time, temp}, commande de lecture (GET, LAST, CLEAR) via CLI&lt;/li&gt;&lt;li&gt;OUT : Séquence de mesure, nombres échantillons stockés&lt;/li&gt;&lt;li&gt;ACTION : Stockage FIFO des mesures, effacement de l&#39;historique&lt;/li&gt;&lt;li&gt;API : Logger-Init(), Logger_Push(float temp_c), Logger_Clear, Logger_GetCount(), Logger_GetSample(uint16_t index, LogEntry_t *out), Logger_GetLast(LogEntry_t *out)&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="560" y="530" width="240" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="9fADJIqU08Vi0cWy6jxG-12" target="9fADJIqU08Vi0cWy6jxG-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9fADJIqU08Vi0cWy6jxG-12" target="9fADJIqU08Vi0cWy6jxG-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-12" value="&lt;p style=&quot;margin: 4px 0px 0px; text-align: center;&quot;&gt;&lt;b&gt;&lt;u&gt;cli_uart&lt;/u&gt;&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:8px;&quot;&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Rôle : Fournir une interface en ligne de commande (CLI) au-dessus de l’UART.&lt;br&gt;&lt;/li&gt;&lt;li&gt;IN : Caractère recu de l&#39;UART&lt;/li&gt;&lt;li&gt;OUT : Commandes décodées (GET, LAST, CLEAR, MEASURE...), Réponses texte à envoyer vers l’UART&lt;/li&gt;&lt;li&gt;ACTION : Bufferisation d&#39;entrée, parser/tokenisation, Appel handlers associés, Détecter fin de commande (LF/CR)&lt;/li&gt;&lt;li&gt;API : CliUart_Init(), CliUart_OnRxChar(uint8_t c), CliUart_Process(), CliUart_RegisterHandlers(...)&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="560" y="193.75" width="240" height="292.5" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="9fADJIqU08Vi0cWy6jxG-17" target="9fADJIqU08Vi0cWy6jxG-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="9fADJIqU08Vi0cWy6jxG-17" value="&lt;p style=&quot;margin: 4px 0px 0px; text-align: center;&quot;&gt;&lt;b&gt;&lt;u&gt;scheduler&lt;/u&gt;&lt;/b&gt;&lt;/p&gt;&lt;hr size=&quot;1&quot; style=&quot;border-style:solid;&quot;&gt;&lt;p style=&quot;margin:0px;margin-left:8px;&quot;&gt;&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Rôle : Planifier les tâches périodiques (acquisition, logging) à partir du tick Timer&lt;br&gt;&lt;/li&gt;&lt;li&gt;IN : Tick periodique (ISR Timer), configuration période&lt;/li&gt;&lt;li&gt;OUT : Compter les ticks, déclencher interruption aux bonnes périodes&lt;/li&gt;&lt;li&gt;API : Scheduler_Init(uint32_t period_ms), Scheduler_OnTick() // appelé depuis IT TIM3&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;&lt;/p&gt;" style="verticalAlign=top;align=left;overflow=fill;html=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="160" y="565" width="240" height="200" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
