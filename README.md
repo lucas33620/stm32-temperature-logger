@@ -16,36 +16,6 @@ Ce projet démontre une architecture modulaire propre, des drivers bas niveau (A
 
 ---
 
-## 🧱 Architecture du système
- +-----------------------+
- |        Sensor         |
- |  - ADC interne        |
- |  - TMP102 / LM75 I2C  |
- +----------+------------+
-            |
-            v
- +-----------------------+
- |        Logger         |
- |  EEPROM 24C32/64 I2C  |
- |  - append()           |
- |  - read(index)        |
- |  - clear()            |
- +----------+------------+
-            |
-            v
- +-----------------------+
- |     Scheduler (TIM)   |
- |  - mesure toutes X s  |
- +----------+------------+
-            |
-            v
- +-----------------------+
- |      UART CLI         |
- |  GET  -> JSON dump    |
- |  LAST -> dernière val |
- |  CLEAR -> erase EEPROM|
- +-----------------------+
-
 ## 🗂 Arborescence du projet
 /Core
   /Inc
@@ -61,6 +31,8 @@ Ce projet démontre une architecture modulaire propre, des drivers bas niveau (A
     cli_uart.c
     scheduler.c
 
+---
+
 ## 🛠 Matériel utilisé
 
 - STM32F4 / STM32F1 (compatible HAL)
@@ -68,6 +40,8 @@ Ce projet démontre une architecture modulaire propre, des drivers bas niveau (A
 - EEPROM 24C32 ou 24C64 (I2C)
 - UART vers PC (3.3V)
 - Alimentation 3.3V
+
+---
 
 ## 🧪 Mise en route
 1. Compiler & flasher
