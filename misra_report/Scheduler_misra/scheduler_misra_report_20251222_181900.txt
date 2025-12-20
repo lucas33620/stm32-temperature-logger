@@ -1,0 +1,35 @@
+App\Src\scheduler.c:8:0: information: Include file: "scheduler.h" not found. [missingInclude]
+#include "scheduler.h"
+^
+App\Src\scheduler.c:17:6: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]
+void Scheduler_Task(void)
+     ^
+App\Src\scheduler.c:24:20: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]
+SchedulerStatus_t  Scheduler_Init(uint32_t period_tick)
+                   ^
+App\Src\scheduler.c:41:6: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]
+void Scheduler_OnTick(void)
+     ^
+App\Src\scheduler.c:57:6: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.4]
+void Scheduler_Process(void)
+     ^
+App\Src\scheduler.c:10:17: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.9]
+static uint32_t tick_count = 0U;          /* ISR-only */
+                ^
+App\Src\scheduler.c:24:20: style: The function 'Scheduler_Init' is never used. [unusedFunction]
+SchedulerStatus_t  Scheduler_Init(uint32_t period_tick)
+                   ^
+App\Src\scheduler.c:41:6: style: The function 'Scheduler_OnTick' is never used. [unusedFunction]
+void Scheduler_OnTick(void)
+     ^
+App\Src\scheduler.c:57:6: style: The function 'Scheduler_Process' is never used. [unusedFunction]
+void Scheduler_Process(void)
+     ^
+App\Src\scheduler.c:17:6: style: The function 'Scheduler_Task' should have static linkage since it is not used outside of its translation unit. [staticFunction]
+void Scheduler_Task(void)
+     ^
+App\Src\scheduler.c:17:6: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+void Scheduler_Task(void)
+     ^
+nofile:0:0: information: Active checkers: 393/1166 (use --checkers-report=<filename> to see details) [checkersReport]
+
