@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "scheduler.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -66,6 +67,14 @@ static void MX_USART3_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/* Callback Scheduler */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM2)
+    {
+        Scheduler_OnTick();
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -103,6 +112,8 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  /* App INIT*/
+  Scheduler_Init(5000U); // 5 sec
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,7 +121,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	Scheduler_Process();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
