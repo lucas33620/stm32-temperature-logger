@@ -1,0 +1,3 @@
+../App/Src/scheduler.c:12:6:Scheduler_Init	2
+../App/Src/scheduler.c:28:6:Scheduler_OnTick	2
+../App/Src/scheduler.c:39:6:Scheduler_Process	2

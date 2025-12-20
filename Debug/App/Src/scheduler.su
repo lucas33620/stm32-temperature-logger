@@ -1,0 +1,3 @@
+../App/Src/scheduler.c:12:6:Scheduler_Init	16	static
+../App/Src/scheduler.c:28:6:Scheduler_OnTick	4	static
+../App/Src/scheduler.c:39:6:Scheduler_Process	4	static
