@@ -17,7 +17,7 @@ Ce projet démontre une architecture modulaire propre, des drivers bas niveau (A
 ---
 
 ## 🗂 Arborescence du projet
-/App
+/Core
   /Inc
     sensor.h
     logger.h
