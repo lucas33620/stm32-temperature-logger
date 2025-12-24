@@ -1,0 +1,65 @@
+App\Inc\sensor.h:10:0: information: Include file: <stdint.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdint.h>
+^
+App\Inc\sensor.h:11:0: information: Include file: <stddef.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stddef.h>
+^
+App\Src\sensor.c:9:0: information: Include file: "stm32f4xx_hal.h" not found. [missingInclude]
+#include "stm32f4xx_hal.h"
+^
+App\Src\sensor.c:29:11: style: The scope of the variable 'addr_hal' can be reduced. [variableScope]
+ uint16_t addr_hal;
+          ^
+App\Src\sensor.c:67:13: style: The scope of the variable 'rx_buf' can be reduced. [variableScope]
+    uint8_t rx_buf[SENSOR_LM75_TEMP_BYTES];
+            ^
+App\Src\sensor.c:68:14: style: The scope of the variable 'addr_hal' can be reduced. [variableScope]
+    uint16_t addr_hal;
+             ^
+App\Src\sensor.c:69:14: style: The scope of the variable 'raw_u16' can be reduced. [variableScope]
+    uint16_t raw_u16;
+             ^
+App\Src\sensor.c:70:13: style: The scope of the variable 'raw_s16' can be reduced. [variableScope]
+    int16_t raw_s16;
+            ^
+App\Src\sensor.c:71:13: style: The scope of the variable 'code' can be reduced. [variableScope]
+    int16_t code;
+            ^
+App\Src\sensor.c:43:16: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-17.3]
+  hal_status = HAL_I2C_IsDeviceReady(&hi2c1, addr_hal, SENSOR_I2C_TRIALS, SENSOR_I2C_TIMEOUT_MS);
+               ^
+App\Src\sensor.c:82:16: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-17.3]
+  hal_status = HAL_I2C_Mem_Read(&hi2c1, addr_hal, SENSOR_LM75_REG_TEMP, I2C_MEMADD_SIZE_8BIT, &rx_buf[0], (uint16_t)SENSOR_LM75_TEMP_BYTES, SENSOR_I2C_TIMEOUT_MS);
+               ^
+App\Src\sensor.c:67:19: error: Because of missing configuration, misra checking is incomplete. There can be false negatives! Unknown constant SENSOR_LM75_TEMP_BYTES, please review configuration [misra-config]
+    uint8_t rx_buf[SENSOR_LM75_TEMP_BYTES];
+                  ^
+App\Src\sensor.c:45:21: error: Because of missing configuration, misra checking is incomplete. There can be false negatives! Variable 'HAL_OK' is unknown [misra-config]
+  if (hal_status == HAL_OK)
+                    ^
+App\Src\sensor.c:49:26: error: Because of missing configuration, misra checking is incomplete. There can be false negatives! Variable 'HAL_TIMEOUT' is unknown [misra-config]
+  else if (hal_status == HAL_TIMEOUT)
+                         ^
+App\Src\sensor.c:84:21: error: Because of missing configuration, misra checking is incomplete. There can be false negatives! Variable 'HAL_OK' is unknown [misra-config]
+  if (hal_status == HAL_OK)
+                    ^
+App\Src\sensor.c:103:26: error: Because of missing configuration, misra checking is incomplete. There can be false negatives! Variable 'HAL_TIMEOUT' is unknown [misra-config]
+  else if (hal_status == HAL_TIMEOUT)
+                         ^
+App\Src\sensor.c:63:16: style: The function 'Sensor_ReadTemperature' is never used. [unusedFunction]
+SensorStatus_t Sensor_ReadTemperature(float * out_celsius)
+               ^
+App\Src\sensor.c:118:17: style: The function 'Sensor_SetAddress' is never used. [unusedFunction]
+SensorStatus_t  Sensor_SetAddress(uint8_t new_addr)
+                ^
+App\Src\sensor.c:25:16: style: The function 'Sensor_Init' should have static linkage since it is not used outside of its translation unit. [staticFunction]
+SensorStatus_t Sensor_Init(uint8_t addr)
+               ^
+App\Src\sensor.c:63:16: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+SensorStatus_t Sensor_ReadTemperature(float * out_celsius)
+               ^
+App\Src\sensor.c:118:17: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+SensorStatus_t  Sensor_SetAddress(uint8_t new_addr)
+                ^
+nofile:0:0: information: Active checkers: 393/1166 (use --checkers-report=<filename> to see details) [checkersReport]
+

@@ -13,18 +13,6 @@ static volatile uint8_t tick_flag = 0U;   /* ISR <-> main flag */
 
 #define SCHEDULER_MIN_PERIOD_TICKS   (1U)
 
-/* -- API -- */
-#if defined(__GNUC__)
-#define SCHEDULER_WEAK __attribute__((weak))
-#else
-#define SCHEDULER_WEAK
-#endif
-
-SCHEDULER_WEAK void Scheduler_Task(void)
-{
-    /* Default empty task; may be overridden by application */
-}
-
 
 /* Initisalisation du scheduler */
 SchedulerStatus_t  Scheduler_Init(uint32_t period_tick)
@@ -71,4 +59,16 @@ void Scheduler_Process(void)
 		tick_flag = 0U;
 		Scheduler_Task();
 	}
+}
+
+/* -- API -- */
+#if defined(__GNUC__)
+#define SCHEDULER_WEAK __attribute__((weak))
+#else
+#define SCHEDULER_WEAK
+#endif
+
+SCHEDULER_WEAK void Scheduler_Task(void)
+{
+    /* Default empty task; may be overridden by application */
 }

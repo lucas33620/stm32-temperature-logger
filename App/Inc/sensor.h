@@ -8,12 +8,12 @@
 #ifndef SENSOR_H
 #define SENSOR_H
 #include <stdint.h>
-#include <stddef.h>
-#include "stm32f4xx_hal.h"
 
-extern I2C_HandleTypeDef hi2c1; /*hi2c1 est généré par CubeMX*/
-
-
+/*Datasheet LM75*/
+#define SENSOR_LM75_MIN_ADDR   		(0x48U)
+#define SENSOR_LM75_DEFAULT_ADDR   	(0x48U) /* LM75 I2C address is 7-bit.*/
+#define SENSOR_LM75_MAX_ADDR 		(0x4FU)
+#define SENSOR_LM75_REG_TEMP		(0x00U)
 
 typedef enum
 {
@@ -31,6 +31,6 @@ SensorStatus_t Sensor_Init(uint8_t addr);
 SensorStatus_t Sensor_ReadTemperature(float * out_celsius);
 
 /* Configure l'adresse I2C 7-bit du LM75 a tout moment */
-void Sensor_SetAddress(uint8_t addr);
+SensorStatus_t  Sensor_SetAddress(uint8_t addr);
 
 #endif /* SENSOR_H */
