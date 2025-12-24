@@ -1,0 +1,48 @@
+# =========================
+# Build outputs (STM32CubeIDE / GCC)
+# =========================
+Debug/
+Release/
+build/
+cmake-build-*/
+out/
+
+# Object files / dependency files
+*.o
+*.a
+*.d
+*.su
+*.cyclo
+*.lst
+*.map
+*.elf
+*.hex
+*.bin
+
+# Generated makefiles
+*/subdir.mk
+*/sources.mk
+*/makefile
+
+# =========================
+# IDE files (STM32CubeIDE / Eclipse)
+# =========================
+.settings/
+.project
+.cproject
+*.launch
+
+# =========================
+# OS / editor clutter
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Logs / local tooling
+# =========================
+*.log
+
+
