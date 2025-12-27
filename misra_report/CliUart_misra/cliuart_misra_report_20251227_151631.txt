@@ -1,0 +1,65 @@
+App\Inc\cli_uart.h:11:0: information: Include file: <stdint.h> not found. Please note: Cppcheck does not need standard library headers to get proper results. [missingIncludeSystem]
+#include <stdint.h>
+^
+App\Src\cli_uart.c:9:0: information: Include file: "stm32f4xx_hal.h" not found. [missingInclude]
+#include "stm32f4xx_hal.h"
+^
+App\Src\cli_uart.c:0:0: information: Limiting analysis of branches. Use --check-level=exhaustive to analyze all branches. [normalCheckLevelMaxBranches]
+
+^
+App\Src\cli_uart.c:97:14: style: The scope of the variable 'cmd' can be reduced. [variableScope]
+    CLICmd_t cmd;
+             ^
+App\Src\cli_uart.c:99:14: style: The scope of the variable 'len_copy' can be reduced. [variableScope]
+    uint32_t len_copy;
+             ^
+App\Src\cli_uart.c:100:13: style: The scope of the variable 'line_copy' can be reduced. [variableScope]
+    uint8_t line_copy[CLI_UART_MAX_LINE_LEN];
+            ^
+App\Src\cli_uart.c:101:14: style: The scope of the variable 'i' can be reduced. [variableScope]
+    uint32_t i;
+             ^
+App\Src\cli_uart.c:121:27: error: Uninitialized variable: len_copy [uninitvar]
+         for (i = 0U; i < len_copy; i++)
+                          ^
+App\Src\cli_uart.c:149:9: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-15.5]
+        return CLI_STATUS_OK;
+        ^
+App\Src\cli_uart.c:153:9: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-15.5]
+        return CLI_STATUS_ERR_PARAM; /* ou ERR_UART si tu ajoutes le statut */
+        ^
+App\Src\cli_uart.c:144:18: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-17.3]
+    hal_status = HAL_UART_Transmit(&huart3, &c, (uint16_t)CLI_UART_TX_LEN_BYTES,
+                 ^
+App\Src\cli_uart.c:147:23: error: Because of missing configuration, misra checking is incomplete. There can be false negatives! Variable 'HAL_OK' is unknown [misra-config]
+    if (hal_status == HAL_OK)
+                      ^
+App\Src\cli_uart.c:57:6: style: The function 'CliUart_Init' is never used. [unusedFunction]
+void CliUart_Init(void)
+     ^
+App\Src\cli_uart.c:67:6: style: The function 'CliUart_OnRxChar' is never used. [unusedFunction]
+void CliUart_OnRxChar(uint8_t c)
+     ^
+App\Src\cli_uart.c:94:13: style: The function 'CliUart_Process' is never used. [unusedFunction]
+CLIStatus_t CliUart_Process(CLICmd_t *out_cmd)
+            ^
+App\Src\cli_uart.c:140:13: style: The function 'CliUart_TxChar' is never used. [unusedFunction]
+CLIStatus_t CliUart_TxChar(uint8_t c)
+            ^
+App\Src\cli_uart.c:165:20: style: The function 'CliUart_OnOverflow' should have static linkage since it is not used outside of its translation unit. [staticFunction]
+CLI_UART_WEAK void CliUart_OnOverflow(void)
+                   ^
+App\Src\cli_uart.c:57:6: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+void CliUart_Init(void)
+     ^
+App\Src\cli_uart.c:67:6: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+void CliUart_OnRxChar(uint8_t c)
+     ^
+App\Src\cli_uart.c:94:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+CLIStatus_t CliUart_Process(CLICmd_t *out_cmd)
+            ^
+App\Src\cli_uart.c:140:13: style: misra violation (use --rule-texts=<file> to get proper output) [misra-c2012-8.7]
+CLIStatus_t CliUart_TxChar(uint8_t c)
+            ^
+nofile:0:0: information: Active checkers: 393/1166 (use --checkers-report=<filename> to see details) [checkersReport]
+

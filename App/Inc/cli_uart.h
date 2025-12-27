@@ -5,8 +5,8 @@
  * © 2025 Syloria — MIT
  */
 
-#ifndef CLIUART_H
-#define CLIUART_H
+#ifndef CLI_UART_H
+#define CLI_UART_H
 
 #include <stdint.h>
 
@@ -32,12 +32,19 @@ typedef enum
 } CLICmd_t;
 
 /*Initialisation le module CLI*/
-CLIStatus_t CliUart_Init(void);
+void CliUart_Init(void);
 
 /*Fournit au CLI un caractere recu sur l'UART.*/
 void CliUart_OnRxChar(uint8_t c);
 
 /*Traite les caracteres bufferises et decode une commande si une ligne est complete.*/
-CLIStatus_t CLIUart_Process(CLICmd_t * out_cmd);
+CLIStatus_t CliUart_Process(CLICmd_t * out_cmd);
+
+/*Emet un caractere via l'UART (sortie CLI).*/
+CLIStatus_t CliUart_TxChar(uint8_t c);
+
+/* API callback executed when overflow is activated*/
+void CliUart_OnOverflow(void);
 
 #endif /* CLIUART */
+
