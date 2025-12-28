@@ -21,5 +21,5 @@ cppcheck ^
  --inline-suppr ^
  --force ^
  -I App/Inc ^
- App/Src/sensor.c ^
+ App/Src/cli_uart.c ^
  2> "%REPORT_DIR%\misra_report_%DATESTR%_%TIMESTR%.txt"
