@@ -17,7 +17,8 @@ typedef enum
 {
     CLI_STATUS_OK = 0,
     CLI_STATUS_ERR_PARAM,
-    CLI_STATUS_ERR_OVERFLOW
+    CLI_STATUS_ERR_OVERFLOW,
+    CLI_STATUS_ERR_UART
 } CLIStatus_t;
 
 /*Commandes normées*/
