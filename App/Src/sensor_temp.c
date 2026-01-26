@@ -1,56 +1,44 @@
-/**
- * @file sensor_temp.c
- * @brief Provide temperature in °C from an LM75 sensor over I2C.
- * @copyright
- * © 2025 SYLORIA — MIT License — BAQUEY Lucas (contact@syloria.fr)
- */
-
 #include "sensor_temp.h"
 #include "stm32f4xx_hal.h"
 
-/* CubeMX generated handle */
 extern I2C_HandleTypeDef hi2c1;
 
-/* --- Define --- */
-#define SENSOR_I2C_TRIALS           (3U)
-#define SENSOR_I2C_TIMEOUT_MS       (10U)
+#define SENSOR_I2C_TRIALS            (3U)
+#define SENSOR_I2C_TIMEOUT_MS        (10U)
 
-#define SENSOR_LM75_TEMP_BYTES      (2U)
-#define SENSOR_LM75_RAW_MASK        (0xFF80U)   /* Keep bits [15:7] */
-#define SENSOR_LM75_DIV_128         (128U)      /* /128 == >>7 (avoid signed shift) */
+#define SENSOR_TEMP_BYTES            (2U)
 
-/* --- Prototypes --- */
-static uint8_t	sensor_addr	= SENSOR_LM75_DEFAULT_ADDR;
-static int16_t	last_temp_x10 = 0;              /* Last temperature *10 (e.g., 235 => 23.5°C) */
-static SensorStatus_t last_status	= SENSOR_ERR_INIT;/* Last sensor operation status */
+/* MCP9808 TA format */
+#define MCP9808_FLAG_MASK            (0xE0U)   /* bits 15..13 */
+#define MCP9808_TEMP_MSB_MASK        (0x1FU)   /* bits 12..8 without flags */
+#define MCP9808_SIGN_BIT             (0x10U)   /* bit 12 in msb after masking flags */
+#define MCP9808_NEG_MSB_MASK         (0x0FU)
 
-/* --- Statics functions --- */
+static uint8_t  sensor_addr = SENSOR_MCP9808_ADDR_MIN;
+static int16_t  last_temp_x10 = 0;
+static SensorStatus_t last_status = SENSOR_ERR_INIT;
+
 static uint16_t Sensor_ToHalAddress(uint8_t addr_7bit)
 {
-    /* HAL expects 7-bit address left-aligned (addr << 1) */
     return (uint16_t)((uint16_t)addr_7bit << 1U);
 }
 
-/* --- Public API --- */
-SensorStatus_t Sensor_Init(uint8_t addr)
+SensorStatus_t Sensor_Init(uint8_t addr_7bit)
 {
-    SensorStatus_t    sensor_status = SENSOR_OK;
-    HAL_StatusTypeDef hal_status    = HAL_OK;
+    SensorStatus_t status = SENSOR_OK;
+    HAL_StatusTypeDef hal_status;
 
-    /* Reset last known values on init */
-    last_status   = SENSOR_ERR_INIT;
+    last_status = SENSOR_ERR_INIT;
     last_temp_x10 = 0;
 
-    /* Validate LM75 7-bit address range */
-    if ((addr < SENSOR_LM75_MIN_ADDR) || (addr > SENSOR_LM75_MAX_ADDR))
+    if ((addr_7bit < SENSOR_MCP9808_ADDR_MIN) || (addr_7bit > SENSOR_MCP9808_ADDR_MAX))
     {
-        sensor_status = SENSOR_ERR_PARAM;
+        status = SENSOR_ERR_PARAM;
     }
     else
     {
-        uint16_t addr_hal = Sensor_ToHalAddress(addr);
+        const uint16_t addr_hal = Sensor_ToHalAddress(addr_7bit);
 
-        /* I2C presence check (ACK) */
         hal_status = HAL_I2C_IsDeviceReady(&hi2c1,
                                            addr_hal,
                                            SENSOR_I2C_TRIALS,
@@ -58,97 +46,98 @@ SensorStatus_t Sensor_Init(uint8_t addr)
 
         if (hal_status == HAL_OK)
         {
-            sensor_addr = addr;
-            sensor_status = SENSOR_OK;
+            sensor_addr = addr_7bit;
+            status = SENSOR_OK;
         }
         else if (hal_status == HAL_TIMEOUT)
         {
-            sensor_status = SENSOR_ERR_TIMEOUT;
+            status = SENSOR_ERR_TIMEOUT;
         }
         else
         {
-            sensor_status = SENSOR_ERR_I2C;
+            status = SENSOR_ERR_I2C;
         }
     }
 
-    /* Store init result as last status */
-    last_status = sensor_status;
-
-    return sensor_status;
+    last_status = status;
+    return status;
 }
 
 SensorStatus_t Sensor_ReadTemperature(float * out_celsius)
 {
-    SensorStatus_t    sensor_status = SENSOR_OK;
-    HAL_StatusTypeDef hal_status    = HAL_OK;
+    SensorStatus_t status = SENSOR_OK;
+    HAL_StatusTypeDef hal_status;
 
     if (out_celsius == NULL)
     {
-        sensor_status = SENSOR_ERR_PARAM;
+        status = SENSOR_ERR_PARAM;
     }
     else
     {
-        uint8_t  rx_buf[SENSOR_LM75_TEMP_BYTES];
-        uint16_t addr_hal;
-        uint16_t raw_u16;
-        int16_t  raw_s16;
-        int16_t  code;
+        uint8_t rx[SENSOR_TEMP_BYTES];
+        const uint16_t addr_hal = Sensor_ToHalAddress(sensor_addr);
 
-        addr_hal = Sensor_ToHalAddress(sensor_addr);
-
-        /* Read LM75 temperature register (2 bytes) */
         hal_status = HAL_I2C_Mem_Read(&hi2c1,
                                       addr_hal,
-                                      (uint16_t)SENSOR_LM75_REG_TEMP,
+                                      (uint16_t)SENSOR_MCP9808_REG_TA,
                                       I2C_MEMADD_SIZE_8BIT,
-                                      &rx_buf[0],
-                                      (uint16_t)SENSOR_LM75_TEMP_BYTES,
+                                      &rx[0],
+                                      (uint16_t)SENSOR_TEMP_BYTES,
                                       (uint32_t)SENSOR_I2C_TIMEOUT_MS);
 
         if (hal_status == HAL_OK)
         {
-            /* Assemble MSB/LSB */
-            raw_u16 = (uint16_t)(((uint16_t)rx_buf[0] << 8U) | (uint16_t)rx_buf[1]);
+            /* MCP9808 TA register is 16-bit: [15:13]=flags, [12]=sign, [11:0]=temp*16 */
+            const uint16_t raw16 = (uint16_t)(((uint16_t)rx[0] << 8U) | (uint16_t)rx[1]);
+            const uint16_t ta16  = (uint16_t)(raw16 & 0x1FFFU);      /* clear flags */
+            const uint16_t mag16 = (uint16_t)(ta16 & 0x0FFFU);       /* magnitude (temp*16) */
+            float temp_c;
 
-            /* Keep only meaningful bits [15:7] */
-            raw_u16 = (uint16_t)(raw_u16 & (uint16_t)SENSOR_LM75_RAW_MASK);
+            if ((ta16 & 0x1000U) != 0U)
+            {
+                /* Negative temperature: Temp = (mag/16) - 256 */
+                temp_c = ((float)mag16 / 16.0F) - 256.0F;
+            }
+            else
+            {
+                /* Positive temperature */
+                temp_c = (float)mag16 / 16.0F;
+            }
 
-            /* Interpret as signed value (negative temperatures supported) */
-            raw_s16 = (int16_t)raw_u16;
+            *out_celsius = temp_c;
 
-            /* /128 == >>7; division avoids signed shift concerns */
-            code = (int16_t)(raw_s16 / (int16_t)SENSOR_LM75_DIV_128);
+            /* Cache x10 (arrondi simple) */
+            if (temp_c >= 0.0F)
+            {
+                last_temp_x10 = (int16_t)((temp_c * 10.0F) + 0.5F);
+            }
+            else
+            {
+                last_temp_x10 = (int16_t)((temp_c * 10.0F) - 0.5F);
+            }
 
-            /* LM75: LSB = 0.5°C */
-            *out_celsius = ((float)code) * 0.5F;
-
-            /* Cache last value as x10 without float: (code * 0.5°C) * 10 = code * 5 */
-            last_temp_x10 = (int16_t)(code * 5);
-            sensor_status = SENSOR_OK;
+            status = SENSOR_OK;
         }
         else if (hal_status == HAL_TIMEOUT)
         {
-            sensor_status = SENSOR_ERR_TIMEOUT;
+            status = SENSOR_ERR_TIMEOUT;
         }
         else
         {
-            sensor_status = SENSOR_ERR_I2C;
+            status = SENSOR_ERR_I2C;
         }
     }
 
-    /* Store last operation status */
-    last_status = sensor_status;
-
-    return sensor_status;
+    last_status = status;
+    return status;
 }
 
-SensorStatus_t Sensor_SetAddress(uint8_t new_addr)
+
+SensorStatus_t Sensor_SetAddress(uint8_t addr_7bit)
 {
-    /* Reuse init to validate and update address */
-    return Sensor_Init(new_addr);
+    return Sensor_Init(addr_7bit);
 }
 
-/* Get the last temperature value*10 */
 SensorStatus_t Sensor_GetLastTemperature_x10(int16_t * out_temp_x10)
 {
     SensorStatus_t status = last_status;

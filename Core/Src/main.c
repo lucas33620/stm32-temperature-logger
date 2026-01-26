@@ -2,23 +2,12 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
+  * @brief          : Main program body - Temperature test (LM75 -> UART)
   ******************************************************************************
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "adc.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -27,7 +16,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "scheduler.h"
+#include "sensor_temp.h"
+#include "stm32f4xx_hal.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +39,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+static volatile int16_t g_last_temp_x10 = 0; /* watch variable (temp *10) */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,14 +51,118 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-/* Callback Scheduler */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+static void Uart_TxBytes(const uint8_t *buf, uint16_t len)
 {
-    if (htim->Instance == TIM2)
+    (void)HAL_UART_Transmit(&huart3, (uint8_t*)buf, len, 50U);
+}
+
+static void Uart_TxString(const char *s)
+{
+    uint16_t len = 0U;
+    while (s[len] != '\0')
     {
-        //Scheduler_OnTick();
+        len++;
+    }
+    Uart_TxBytes((const uint8_t*)s, len);
+}
+
+static uint16_t AppendUIntToBuf(char *buf, uint16_t pos, uint32_t val)
+{
+    char tmp[10];
+    uint16_t i = 0U;
+    uint16_t j;
+
+    if (val == 0UL)
+    {
+        buf[pos++] = '0';
+        return pos;
+    }
+
+    while ((val != 0UL) && (i < (uint16_t)sizeof(tmp)))
+    {
+        tmp[i++] = (char)('0' + (char)(val % 10UL));
+        val /= 10UL;
+    }
+
+    j = i;
+    while (j > 0U)
+    {
+        j--;
+        buf[pos++] = tmp[j];
+    }
+
+    return pos;
+}
+
+static void Uart_TxTempX10(int16_t temp_x10)
+{
+    char line[32];
+    uint16_t pos = 0U;
+    uint32_t abs_x10;
+    uint32_t int_part;
+    uint32_t frac_part;
+
+    /* Prefix */
+    line[pos++] = 'T';
+    line[pos++] = '=';
+    if (temp_x10 < 0)
+    {
+        line[pos++] = '-';
+        abs_x10 = (uint32_t)(-(int32_t)temp_x10);
+    }
+    else
+    {
+        abs_x10 = (uint32_t)temp_x10;
+    }
+
+    int_part  = abs_x10 / 10UL;
+    frac_part = abs_x10 % 10UL;
+
+    pos = AppendUIntToBuf(line, pos, int_part);
+    line[pos++] = '.';
+    line[pos++] = (char)('0' + (char)frac_part);
+    line[pos++] = 'C';
+    line[pos++] = '\r';
+    line[pos++] = '\n';
+    line[pos++] = '\0';
+
+    Uart_TxString(line);
+}
+
+/* Override weak callback from scheduler.c */
+void Scheduler_Task(void)
+{
+    float temp_c = 0.0F;
+    SensorStatus_t s = Sensor_ReadTemperature(&temp_c);
+
+    if (s == SENSOR_OK)
+    {
+        /* Convert float -> int16 temp_x10 with rounding */
+        int32_t x10;
+        if (temp_c >= 0.0F)
+        {
+            x10 = (int32_t)((temp_c * 10.0F) + 0.5F);
+        }
+        else
+        {
+            x10 = (int32_t)((temp_c * 10.0F) - 0.5F);
+        }
+
+        g_last_temp_x10 = (int16_t)x10; /* watch variable */
+        Uart_TxTempX10(g_last_temp_x10);
+    }
+    else
+    {
+        Uart_TxString("SENSOR_ERR\r\n");
     }
 }
+
+/* Use SysTick (1ms) as scheduler tick source */
+void HAL_SYSTICK_Callback(void)
+{
+    Scheduler_OnTick();
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -99,25 +194,29 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_ADC1_Init();
   MX_I2C1_Init();
+  MX_SPI1_Init();
   MX_TIM2_Init();
   MX_USART3_UART_Init();
-  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+  Scheduler_Init(200U);
 
-  /* App INIT*/
-  //Scheduler_Init(5000U); // 5 sec
-  /* USER CODE END 2 */
+  if (Sensor_Init(0x18U) != SENSOR_OK)
+  {
+      Uart_TxString("Sensor init FAIL\r\n");
+  }
+  else
+  {
+      Uart_TxString("Sensor init OK\r\n");
+  }
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
+      Scheduler_Process();
+      /* optionnel: petite pause pour éviter 100% CPU */
+      HAL_Delay(1U);
   }
+
   /* USER CODE END 3 */
 }
 
@@ -139,10 +238,10 @@ void SystemClock_Config(void)
   * in the RCC_OscInitTypeDef structure.
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 25;
+  RCC_OscInitStruct.PLL.PLLM = 8;
   RCC_OscInitStruct.PLL.PLLN = 336;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;

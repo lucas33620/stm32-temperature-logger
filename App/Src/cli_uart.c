@@ -11,7 +11,7 @@
 #define CLI_UART_TX_LEN_BYTES        (1U)
 #define CLI_UART_TX_TIMEOUT_MS       (10U)
 
-extern UART_HandleTypeDef huart3; /* Genere par CubeMX */
+extern UART_HandleTypeDef huart2; /* Genere par CubeMX */
 
 /* Buffer RX */
 static volatile uint8_t  rx_line[CLI_UART_MAX_LINE_LEN];
@@ -146,7 +146,7 @@ CLIStatus_t CliUart_TxChar(uint8_t c)
     HAL_StatusTypeDef hal_status;
     CLIStatus_t status = CLI_STATUS_OK;
 
-    hal_status = HAL_UART_Transmit(&huart3,
+    hal_status = HAL_UART_Transmit(&huart2,
                                    &c,
                                    (uint16_t)CLI_UART_TX_LEN_BYTES,
                                    (uint32_t)CLI_UART_TX_TIMEOUT_MS);

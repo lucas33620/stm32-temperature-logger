@@ -1,20 +1,12 @@
-/**
- * @file sensor_temp.h
- * @brief fournir une température en °C à partir du module LM75 en I2C
- * @copyright
- * © 2025 SYLORIA — MIT License — BAQUEY Lucas (contact@syloria.fr)
- */
-
 #ifndef SENSOR_TEMP_H
 #define SENSOR_TEMP_H
 
 #include <stdint.h>
 
-/* Datasheet LM75 */
-#define SENSOR_LM75_MIN_ADDR         (0x48U)
-#define SENSOR_LM75_DEFAULT_ADDR     (0x48U) /* LM75 I2C address is 7-bit */
-#define SENSOR_LM75_MAX_ADDR         (0x4FU)
-#define SENSOR_LM75_REG_TEMP         (0x00U)
+#define SENSOR_MCP9808_ADDR_MIN      (0x18U)
+#define SENSOR_MCP9808_ADDR_MAX      (0x1FU)   /* A2/A1/A0 -> 8 adresses */
+
+#define SENSOR_MCP9808_REG_TA        (0x05U)   /* Ambient Temperature (TA) */
 
 typedef enum
 {
@@ -25,9 +17,9 @@ typedef enum
     SENSOR_ERR_TIMEOUT
 } SensorStatus_t;
 
-SensorStatus_t Sensor_Init(uint8_t addr);
+SensorStatus_t Sensor_Init(uint8_t addr_7bit);
 SensorStatus_t Sensor_ReadTemperature(float * out_celsius);
-SensorStatus_t Sensor_SetAddress(uint8_t addr);
-SensorStatus_t Sensor_GetLastTemperature_x10(int16_t * out_temp_x10); /* Getter: last temperature *10 (e.g. 235 => 23.5°C) */
+SensorStatus_t Sensor_SetAddress(uint8_t addr_7bit);
+SensorStatus_t Sensor_GetLastTemperature_x10(int16_t * out_temp_x10);
 
 #endif /* SENSOR_TEMP_H */
