@@ -2,11 +2,11 @@
 /**
   ******************************************************************************
   * @file           : main.c
-  * @brief          : Main program body - Temperature test (LM75 -> UART)
+  * @brief          : Demo MCP9808 (tick 10ms, sample 100ms, UART logs)
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Includes ------------------------------------------------------------------*/
+
 #include "main.h"
 #include "i2c.h"
 #include "spi.h"
@@ -14,41 +14,21 @@
 #include "usart.h"
 #include "gpio.h"
 
-/* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "scheduler.h"
-#include "sensor_temp.h"
+#include "app_mcp9808.h"
 #include "stm32f4xx_hal.h"
 /* USER CODE END Includes */
 
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
 /* USER CODE BEGIN PV */
-static volatile int16_t g_last_temp_x10 = 0; /* watch variable (temp *10) */
+static volatile int16_t  g_last_temp_x10 = 0;  /* watch variable */
+static volatile uint32_t g_samples_ok    = 0U;
+static volatile uint32_t g_samples_stale = 0U;
+static volatile uint32_t g_samples_fault = 0U;
 /* USER CODE END PV */
 
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
 static void Uart_TxBytes(const uint8_t *buf, uint16_t len)
@@ -59,10 +39,7 @@ static void Uart_TxBytes(const uint8_t *buf, uint16_t len)
 static void Uart_TxString(const char *s)
 {
     uint16_t len = 0U;
-    while (s[len] != '\0')
-    {
-        len++;
-    }
+    while (s[len] != '\0') { len++; }
     Uart_TxBytes((const uint8_t*)s, len);
 }
 
@@ -70,7 +47,6 @@ static uint16_t AppendUIntToBuf(char *buf, uint16_t pos, uint32_t val)
 {
     char tmp[10];
     uint16_t i = 0U;
-    uint16_t j;
 
     if (val == 0UL)
     {
@@ -84,11 +60,10 @@ static uint16_t AppendUIntToBuf(char *buf, uint16_t pos, uint32_t val)
         val /= 10UL;
     }
 
-    j = i;
-    while (j > 0U)
+    while (i > 0U)
     {
-        j--;
-        buf[pos++] = tmp[j];
+        i--;
+        buf[pos++] = tmp[i];
     }
 
     return pos;
@@ -96,15 +71,15 @@ static uint16_t AppendUIntToBuf(char *buf, uint16_t pos, uint32_t val)
 
 static void Uart_TxTempX10(int16_t temp_x10)
 {
-    char line[32];
+    char line[40];
     uint16_t pos = 0U;
     uint32_t abs_x10;
     uint32_t int_part;
     uint32_t frac_part;
 
-    /* Prefix */
     line[pos++] = 'T';
     line[pos++] = '=';
+
     if (temp_x10 < 0)
     {
         line[pos++] = '-';
@@ -129,33 +104,91 @@ static void Uart_TxTempX10(int16_t temp_x10)
     Uart_TxString(line);
 }
 
-/* Override weak callback from scheduler.c */
+static void Uart_TxStatusLine(const char *tag, uint32_t val)
+{
+    char line[64];
+    uint16_t pos = 0U;
+
+    while (*tag != '\0') { line[pos++] = *tag++; }
+    line[pos++] = '=';
+    pos = AppendUIntToBuf(line, pos, val);
+    line[pos++] = '\r';
+    line[pos++] = '\n';
+    line[pos++] = '\0';
+
+    Uart_TxString(line);
+}
+
 void Scheduler_Task(void)
 {
-    float temp_c = 0.0F;
-    SensorStatus_t s = Sensor_ReadTemperature(&temp_c);
+    SensorStatus_t st_lat  = SENSOR_OK;
+    SensorStatus_t st_temp = SENSOR_OK;
+    int16_t        t_x10   = 0;
+    uint16_t       age     = 0U;
 
-    if (s == SENSOR_OK)
+    (void)Sensor_Tick();
+
+    (void)Sensor_GetLatchedStatus(&st_lat);
+    (void)Sensor_GetAgeTicks(&age);
+
+    /* --- FAULT latched : priorité absolue --- */
+    static uint8_t fault_reported = 0U;
+    if (st_lat != SENSOR_OK)
     {
-        /* Convert float -> int16 temp_x10 with rounding */
-        int32_t x10;
-        if (temp_c >= 0.0F)
-        {
-            x10 = (int32_t)((temp_c * 10.0F) + 0.5F);
-        }
-        else
-        {
-            x10 = (int32_t)((temp_c * 10.0F) - 0.5F);
-        }
+        g_samples_fault++;
 
-        g_last_temp_x10 = (int16_t)x10; /* watch variable */
-        Uart_TxTempX10(g_last_temp_x10);
+        if (fault_reported == 0U)
+        {
+            fault_reported = 1U;
+            Uart_TxString("FAULT latched\r\n");
+            Uart_TxStatusLine("latched", (uint32_t)st_lat);
+        }
+        return;
     }
-    else
+    fault_reported = 0U;
+
+    /* --- STALE / INVALID / OK : basé sur la donnée --- */
+    st_temp = Sensor_GetLastTemperature_x10(&t_x10);
+
+    static uint8_t stale_reported = 0U;
+
+    if (st_temp == SENSOR_OK)
     {
-        Uart_TxString("SENSOR_ERR\r\n");
+        stale_reported = 0U;
+
+        /* Nominal : n’afficher que si nouvelle mesure (age == 0) */
+        if (age == 0U)
+        {
+            g_last_temp_x10 = t_x10;
+            g_samples_ok++;
+            Uart_TxTempX10(t_x10);
+        }
+        return;
+    }
+
+    /* Donnée STALE */
+    if (st_temp == SENSOR_ERR_STALE)
+    {
+        g_samples_stale++;
+
+        if (stale_reported == 0U)
+        {
+            stale_reported = 1U;
+            Uart_TxString("STALE\r\n");
+            Uart_TxStatusLine("age_ticks", (uint32_t)age);
+        }
+        return;
+    }
+
+    /* Autres cas (pas encore de donnée valide, init, etc.) */
+    if (stale_reported == 0U)
+    {
+        stale_reported = 1U;
+        Uart_TxString("TEMP_NOT_AVAILABLE\r\n");
+        Uart_TxStatusLine("st_temp", (uint32_t)st_temp);
     }
 }
+
 
 /* Use SysTick (1ms) as scheduler tick source */
 void HAL_SYSTICK_Callback(void)
@@ -165,41 +198,19 @@ void HAL_SYSTICK_Callback(void)
 
 /* USER CODE END 0 */
 
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_USART3_UART_Init();
+
   /* USER CODE BEGIN 2 */
-  Scheduler_Init(200U);
+  (void)Scheduler_Init(10U); /* 10ms task period (SysTick=1ms) */
 
   if (Sensor_Init(0x18U) != SENSOR_OK)
   {
@@ -213,11 +224,11 @@ int main(void)
   while (1)
   {
       Scheduler_Process();
-      /* optionnel: petite pause pour éviter 100% CPU */
+
+      /* démo: petite respiration CPU */
       HAL_Delay(1U);
   }
-
-  /* USER CODE END 3 */
+  /* USER CODE END 2 */
 }
 
 /**

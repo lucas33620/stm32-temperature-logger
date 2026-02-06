@@ -20,19 +20,41 @@ Ce projet démontre une **architecture modulaire claire**, des **drivers bas niv
 
 ## 🗂 Arborescence du projet
 
-/App
-/Inc
-sensor.h
-logger.h
-cli_uart.h
-scheduler.h
+/Core
+  /Inc
+    main.h
+  /Src
+    main.c
 
-/Src
-main.c
-sensor.c
-logger.c
-cli_uart.c
-scheduler.c
+/HalPort
+  i2c_hal.h
+  i2c_hal.c
+  critical_hal.h
+  critical_hal.c
+
+/Modules
+  /mcp9808
+    mcp9808.h
+    mcp9808.c
+    mcp9808_types.h 
+    mcp9808_cfg.h
+    mcp9808_port.h
+    mcp9808_port_stm32_hal.c
+    README.md
+
+/App
+  /mcp9808
+    app_mcp9808.h
+    app_mcp9808.c
+  app_main.h
+  app_main.c
+  app_cfg.h
+  app_tasks.c
+
+/Services
+  /scheduler
+    scheduler.h
+    scheduler.c
 
 ---
 
