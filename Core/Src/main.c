@@ -31,17 +31,24 @@ void SystemClock_Config(void);
 
 /* USER CODE BEGIN 0 */
 
-static void Uart_TxBytes(const uint8_t *buf, uint16_t len)
-{
-    (void)HAL_UART_Transmit(&huart3, (uint8_t*)buf, len, 50U);
-}
+#define LOG_CRLF "\r\n"
 
-static void Uart_TxString(const char *s)
-{
-    uint16_t len = 0U;
-    while (s[len] != '\0') { len++; }
-    Uart_TxBytes((const uint8_t*)s, len);
-}
+/* Optional ANSI colors (PuTTY: depends on config; keep OFF by default) */
+#define LOG_USE_ANSI_COLOR (0U)
+
+#if (LOG_USE_ANSI_COLOR == 1U)
+#define ANSI_RST "\x1B[0m"
+#define ANSI_RED "\x1B[31m"
+#define ANSI_GRN "\x1B[32m"
+#define ANSI_YEL "\x1B[33m"
+#define ANSI_BLU "\x1B[34m"
+#else
+#define ANSI_RST ""
+#define ANSI_RED ""
+#define ANSI_GRN ""
+#define ANSI_YEL ""
+#define ANSI_BLU ""
+#endif
 
 static uint16_t AppendUIntToBuf(char *buf, uint16_t pos, uint32_t val)
 {
@@ -68,6 +75,138 @@ static uint16_t AppendUIntToBuf(char *buf, uint16_t pos, uint32_t val)
 
     return pos;
 }
+
+
+static const char* SensorStatus_ToStr(SensorStatus_t st)
+{
+    switch (st)
+    {
+        case SENSOR_OK:         return "OK";
+        case SENSOR_ERR_INIT:   return "INIT";
+        case SENSOR_ERR_PARAM:  return "PARAM";
+        case SENSOR_ERR_I2C:    return "I2C";
+        case SENSOR_ERR_STALE:  return "STALE";
+        case SENSOR_ERR_TIMEOUT:return "TIMEO";
+        default:                return "UNK";
+    }
+}
+
+static const char* Color_For(SensorStatus_t st)
+{
+    switch (st)
+    {
+        case SENSOR_OK:        return ANSI_GRN;
+        case SENSOR_ERR_STALE: return ANSI_YEL;
+        case SENSOR_ERR_I2C:   return ANSI_RED;
+        case SENSOR_ERR_TIMEOUT:return ANSI_RED;
+        case SENSOR_ERR_INIT:  return ANSI_BLU;
+        default:               return ANSI_BLU;
+    }
+}
+
+static uint16_t AppendStr(char *buf, uint16_t pos, const char *s)
+{
+    while (*s != '\0')
+    {
+        buf[pos++] = *s++;
+    }
+    return pos;
+}
+
+static uint16_t AppendHex8(char *buf, uint16_t pos, uint8_t v)
+{
+    static const char hx[] = "0123456789ABCDEF";
+    buf[pos++] = '0'; buf[pos++] = 'x';
+    buf[pos++] = hx[(v >> 4) & 0x0F];
+    buf[pos++] = hx[v & 0x0F];
+    return pos;
+}
+
+/* temp_x10 -> "21.0C" or "NA" */
+static uint16_t AppendTempX10(char *buf, uint16_t pos, SensorStatus_t st_temp, int16_t temp_x10)
+{
+    if (st_temp != SENSOR_OK)
+    {
+        return AppendStr(buf, pos, "NA");
+    }
+
+    if (temp_x10 < 0)
+    {
+        buf[pos++] = '-';
+        temp_x10 = (int16_t)(-temp_x10);
+    }
+
+    pos = AppendUIntToBuf(buf, pos, (uint32_t)(temp_x10 / 10));
+    buf[pos++] = '.';
+    buf[pos++] = (char)('0' + (char)(temp_x10 % 10));
+    buf[pos++] = 'C';
+    return pos;
+}
+
+/* One-line log:
+   [ts=012340ms] TEMP | READ  | st=OK    | T=21.0C | age=0000ms | rc=OK    | cnt=0 | note=...
+*/
+static void LogTempLine(const char *evt,
+                        SensorStatus_t st_disp,
+                        SensorStatus_t rc,
+                        SensorStatus_t st_temp,
+                        int16_t temp_x10,
+                        uint32_t age_ms,
+                        uint16_t cnt,
+                        const char *note)
+{
+    char line[160];
+    uint16_t pos = 0U;
+
+    pos = AppendStr(line, pos, Color_For(st_disp));
+    pos = AppendStr(line, pos, "[ts=");
+    pos = AppendUIntToBuf(line, pos, (uint32_t)HAL_GetTick());
+    pos = AppendStr(line, pos, "ms] TEMP | ");
+
+    /* EVT */
+    pos = AppendStr(line, pos, evt);
+    pos = AppendStr(line, pos, " | st=");
+    pos = AppendStr(line, pos, SensorStatus_ToStr(st_disp));
+
+    pos = AppendStr(line, pos, " | T=");
+    pos = AppendTempX10(line, pos, st_temp, temp_x10);
+
+    pos = AppendStr(line, pos, " | age=");
+    pos = AppendUIntToBuf(line, pos, age_ms);
+    pos = AppendStr(line, pos, "ms");
+
+    pos = AppendStr(line, pos, " | rc=");
+    pos = AppendStr(line, pos, SensorStatus_ToStr(rc));
+
+    pos = AppendStr(line, pos, " | cnt=");
+    pos = AppendUIntToBuf(line, pos, (uint32_t)cnt);
+
+    if ((note != NULL) && (note[0] != '\0'))
+    {
+        pos = AppendStr(line, pos, " | ");
+        pos = AppendStr(line, pos, note);
+    }
+
+    pos = AppendStr(line, pos, ANSI_RST);
+    pos = AppendStr(line, pos, LOG_CRLF);
+
+    (void)HAL_UART_Transmit(&huart3, (uint8_t*)line, pos, 50U);
+}
+
+static void Uart_TxBytes(const uint8_t *buf, uint16_t len)
+{
+    (void)HAL_UART_Transmit(&huart3, (uint8_t*)buf, len, 50U);
+}
+
+static void Uart_TxString(const char *s)
+{
+    uint16_t len = 0U;
+    while (s[len] != '\0') { len++; }
+    Uart_TxBytes((const uint8_t*)s, len);
+}
+
+
+
 
 static void Uart_TxTempX10(int16_t temp_x10)
 {
@@ -122,72 +261,94 @@ static void Uart_TxStatusLine(const char *tag, uint32_t val)
 void Scheduler_Task(void)
 {
     SensorStatus_t st_lat  = SENSOR_OK;
+    SensorStatus_t st_last = SENSOR_OK;
     SensorStatus_t st_temp = SENSOR_OK;
-    int16_t        t_x10   = 0;
-    uint16_t       age     = 0U;
+
+    int16_t  t_x10 = 0;
+    uint16_t age_ticks = 0U;
+    uint16_t cnt = 0U;
 
     (void)Sensor_Tick();
 
     (void)Sensor_GetLatchedStatus(&st_lat);
-    (void)Sensor_GetAgeTicks(&age);
+    (void)Sensor_GetLastStatus(&st_last);
+    (void)Sensor_GetAgeTicks(&age_ticks);
+    (void)Sensor_GetFaultCount(&cnt);
 
-    /* --- FAULT latched : priorité absolue --- */
-    static uint8_t fault_reported = 0U;
+    const uint32_t age_ms = (uint32_t)age_ticks * 10U;
+
+    static uint8_t was_fault = 0U;
+    static uint8_t was_stale = 0U;
+    static uint8_t init_logged = 0U;
+
+    /* NEW: remember last logged ERR to avoid spam */
+    static SensorStatus_t last_logged_err = SENSOR_OK;
+
+    if (init_logged == 0U)
+    {
+        init_logged = 1U;
+        LogTempLine("INIT ", SENSOR_ERR_INIT, SENSOR_OK, SENSOR_ERR_INIT, 0, age_ms, cnt, "addr=0x18");
+    }
+
     if (st_lat != SENSOR_OK)
     {
-        g_samples_fault++;
-
-        if (fault_reported == 0U)
+        if (was_fault == 0U)
         {
-            fault_reported = 1U;
-            Uart_TxString("FAULT latched\r\n");
-            Uart_TxStatusLine("latched", (uint32_t)st_lat);
+            was_fault = 1U;
+            LogTempLine("FAULT", SENSOR_ERR_I2C, st_lat, SENSOR_ERR_INIT, 0, age_ms, cnt, "latched=1");
         }
+
+        /* Optional: reset ERR latch when entering FAULT */
+        last_logged_err = SENSOR_OK;
         return;
     }
-    fault_reported = 0U;
+    was_fault = 0U;
 
-    /* --- STALE / INVALID / OK : basé sur la donnée --- */
     st_temp = Sensor_GetLastTemperature_x10(&t_x10);
-
-    static uint8_t stale_reported = 0U;
 
     if (st_temp == SENSOR_OK)
     {
-        stale_reported = 0U;
+        /* returning to OK -> reset err latch */
+        last_logged_err = SENSOR_OK;
 
-        /* Nominal : n’afficher que si nouvelle mesure (age == 0) */
-        if (age == 0U)
+        if (age_ticks == 0U)
         {
             g_last_temp_x10 = t_x10;
-            g_samples_ok++;
-            Uart_TxTempX10(t_x10);
+            LogTempLine("READ ", SENSOR_OK, SENSOR_OK, SENSOR_OK, t_x10, 0U, cnt, "");
         }
+        was_stale = 0U;
         return;
     }
 
-    /* Donnée STALE */
     if (st_temp == SENSOR_ERR_STALE)
     {
-        g_samples_stale++;
+        /* returning to STALE -> reset err latch */
+        last_logged_err = SENSOR_OK;
 
-        if (stale_reported == 0U)
+        if (was_stale == 0U)
         {
-            stale_reported = 1U;
-            Uart_TxString("STALE\r\n");
-            Uart_TxStatusLine("age_ticks", (uint32_t)age);
+            was_stale = 1U;
+            LogTempLine("STALE", SENSOR_ERR_STALE, SENSOR_OK, SENSOR_OK, t_x10, age_ms, cnt, "");
         }
         return;
     }
 
-    /* Autres cas (pas encore de donnée valide, init, etc.) */
-    if (stale_reported == 0U)
+    if (st_temp == SENSOR_ERR_INIT)
     {
-        stale_reported = 1U;
-        Uart_TxString("TEMP_NOT_AVAILABLE\r\n");
-        Uart_TxStatusLine("st_temp", (uint32_t)st_temp);
+        /* returning to INIT -> reset err latch */
+        last_logged_err = SENSOR_OK;
+        return;
+    }
+
+    /* Autres erreurs non latched : log uniquement si changement */
+    if (st_temp != last_logged_err)
+    {
+        last_logged_err = st_temp;
+        LogTempLine("ERR  ", st_temp, st_temp, st_temp, 0, age_ms, cnt, "");
     }
 }
+
+
 
 
 /* Use SysTick (1ms) as scheduler tick source */

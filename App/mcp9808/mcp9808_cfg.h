@@ -14,13 +14,13 @@
 #ifndef MCP9808_CFG_H
 #define MCP9808_CFG_H
 
-/**  
+/**
  *  @brief MCP9808 temperature sensor configuration
  * * @note :
  *  - Scheduler_Task period is SENSOR_TICK_MS (cooperative tick).
  *  - Sampling is performed every SENSOR_SAMPLE_DIV ticks.
  *  - A sample becomes "stale" after SENSOR_STALE_MS without a valid update.
- *  
+ *
  */
 
 /* Base tick period (Scheduler_Task call period), in milliseconds */

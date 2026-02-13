@@ -510,14 +510,14 @@ SensorStatus_t Sensor_GetLastTemperature_x10(int16_t *out_temp_x10)
     {
         sensor_status = SENSOR_ERR_INIT;
     }
-    else if (g_sensor.age_ticks >= SENSOR_STALE_TICKS)
-    {
-        sensor_status = SENSOR_ERR_TIMEOUT;
-    }
-
     else
     {
         *out_temp_x10 = g_sensor.last_temp_x10;
+    }
+
+    if (g_sensor.age_ticks >= SENSOR_STALE_TICKS)
+    {
+        return SENSOR_ERR_STALE;
     }
 
     return sensor_status;
